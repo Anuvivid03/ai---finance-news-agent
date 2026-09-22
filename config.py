@@ -82,3 +82,16 @@ AI_REQUEST_TIMEOUT: Final[int] = 45
 AI_TEMPERATURE: Final[float] = 0.3
 
 AI_MAX_TOKENS: Final[int] = 300
+# ---------------------------------------------------------
+# TELEGRAM SETTINGS
+# ---------------------------------------------------------
+
+TELEGRAM_BOT_TOKEN: str = os.getenv(
+    "TELEGRAM_BOT_TOKEN",
+    ""
+)
+
+TELEGRAM_CHAT_ID: str = os.getenv(
+    "TELEGRAM_CHAT_ID",
+    ""
+)
