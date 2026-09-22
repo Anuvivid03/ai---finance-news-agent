@@ -55,9 +55,8 @@ OPENROUTER_API_URL: Final[str] = (
 )
 
 OPENROUTER_MODEL: Final[str] = (
-    "nvidia/nemotron-3-ultra-550b-a55b:free"
+    "openrouter/free"
 )
-
 
 # Optional OpenRouter headers
 OPENROUTER_HTTP_REFERER: str = os.getenv(
