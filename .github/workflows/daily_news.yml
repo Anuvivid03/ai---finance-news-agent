@@ -1,0 +1,46 @@
+name: Daily Finance News Agent
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-digest:
+    name: Generate Finance News Digest
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run news agent
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_HTTP_REFERER: ${{ github.server_url }}/${{ github.repository }}
+          OPENROUTER_APP_NAME: AI Finance News Agent
+        run: |
+          python main.py
+
+      - name: Upload daily digest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: finance-news-digest-${{ github.run_number }}
+          path: output/*.json
+          if-no-files-found: warn
+          retention-days: 30
