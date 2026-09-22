@@ -28,35 +28,81 @@ logger = logging.getLogger(__name__)
 
 
 def build_prompt(article: Article) -> str:
-    """Build the prompt sent to the AI model."""
+    """Build a high-quality Instagram finance-news prompt."""
     return f"""
-Create an Instagram finance-news caption from this article.
+You are an Indian financial news editor creating Instagram captions.
 
-Article title:
+ARTICLE TITLE:
 {article.title}
 
-Article summary:
+ARTICLE SUMMARY:
 {article.summary}
 
-Source:
+SOURCE:
 {article.source}
 
-Return ONLY valid JSON in this exact format:
+Create a short, factual Instagram finance-news caption.
+
+Return ONLY valid JSON in exactly this format:
+
 {{
-  "headline": "emoji + short Hinglish headline",
-  "summary": "2-3 short Hinglish lines",
+  "headline": "emoji + short headline",
+  "summary": "2-3 short lines",
   "hashtags": ["#Finance", "#StockMarket", "#News"]
 }}
 
-Rules:
-- Write in simple Hinglish.
-- Keep it factual.
-- Do not give investment advice.
-- Do not make predictions.
-- Do not invent facts.
-- Headline should be short and attention-grabbing.
-- Summary should be 2-3 short lines.
-- Use 3-5 relevant hashtags.
+STRICT WRITING RULES:
+
+1. Write in NATURAL INDIAN HINGLISH.
+2. Use ROMAN ENGLISH letters only. Do NOT use Hindi Devanagari script.
+3. Mix simple Hindi and English naturally.
+4. Keep financial terms in English where appropriate:
+   IPO, Nifty, Sensex, RBI, SEBI, stocks, shares, crude oil, rupee, market, investors, etc.
+5. Do NOT translate financial terms into awkward Hindi.
+6. Headline must be short, clear and attention-grabbing.
+7. Headline should normally be 5-10 words.
+8. Summary must contain 2-3 short, easy-to-read lines.
+9. Explain WHAT happened, using only information available in the article.
+10. Do NOT add information that is not present in the article.
+11. Do NOT give investment advice.
+12. Do NOT tell people to BUY, SELL or HOLD.
+13. Do NOT make predictions about prices or markets.
+14. Do NOT use phrases like "investors should buy", "big opportunity", or "guaranteed profit".
+15. Avoid clickbait and exaggerated language.
+16. Use 3-5 relevant hashtags.
+17. Always include #Finance and #StockMarket.
+18. Add 1-3 topic-specific hashtags when relevant.
+19. Keep the tone professional but social-media friendly.
+20. Do not mention that you are an AI.
+
+QUALITY EXAMPLES:
+
+Bad:
+"Indonesia Banayat Naya Body"
+
+Good:
+"🇮🇩 Indonesia banayega naya land reform body"
+
+Bad:
+"📈 Rupee ke nirantar badlav kya hain?"
+
+Good:
+"💱 Rupee par oil prices ka pressure"
+
+Bad:
+"Nvidia shares now sell for half the price..."
+
+Good Hinglish:
+"💻 Nvidia shares mein badi girawat"
+
+Remember:
+- Natural Hinglish
+- Roman script only
+- Factual
+- Short
+- Instagram-friendly
+
+Return ONLY JSON. No markdown. No explanation.
 """.strip()
 
 
@@ -86,6 +132,14 @@ def parse_ai_response(content: str) -> dict[str, Any]:
         if str(tag).strip()
     ][:5]
 
+    if "#Finance" not in hashtags:
+        hashtags.insert(0, "#Finance")
+
+    if "#StockMarket" not in hashtags:
+        hashtags.insert(1, "#StockMarket")
+
+    hashtags = hashtags[:5]
+
     return {
         "headline": headline,
         "summary": summary,
@@ -114,8 +168,9 @@ def summarize_article(article: Article) -> dict[str, Any] | None:
             {
                 "role": "system",
                 "content": (
-                    "You are a factual financial news editor. "
-                    "Write concise Hinglish social-media captions."
+                    "You are a factual Indian financial news editor. "
+                    "Write natural Roman-script Hinglish captions "
+                    "for Instagram. Never invent facts."
                 ),
             },
             {
@@ -143,6 +198,7 @@ def summarize_article(article: Article) -> dict[str, Any] | None:
 
             if response.status_code == 429:
                 retry_after = response.headers.get("Retry-After", "5")
+
                 try:
                     wait_seconds = int(retry_after)
                 except ValueError:
@@ -152,6 +208,7 @@ def summarize_article(article: Article) -> dict[str, Any] | None:
                     "Rate limited. Waiting %d seconds.",
                     wait_seconds,
                 )
+
                 time.sleep(wait_seconds)
                 continue
 
@@ -160,6 +217,7 @@ def summarize_article(article: Article) -> dict[str, Any] | None:
                     "OpenRouter server error: HTTP %d",
                     response.status_code,
                 )
+
                 if attempt < AI_MAX_RETRIES:
                     time.sleep(2 ** (attempt - 1))
                     continue
@@ -168,9 +226,7 @@ def summarize_article(article: Article) -> dict[str, Any] | None:
 
             response_data = response.json()
 
-            content = (
-                response_data["choices"][0]["message"]["content"]
-            )
+            content = response_data["choices"][0]["message"]["content"]
 
             ai_result = parse_ai_response(content)
 
