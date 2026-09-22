@@ -28,9 +28,9 @@ logger = logging.getLogger(__name__)
 
 
 def build_prompt(article: Article) -> str:
-    """Build a high-quality Instagram finance-news prompt."""
+    """Build a factual English finance-news prompt."""
     return f"""
-You are an Indian financial news editor creating Instagram captions.
+You are a professional financial news editor creating Instagram captions.
 
 ARTICLE TITLE:
 {article.title}
@@ -46,63 +46,52 @@ Create a short, factual Instagram finance-news caption.
 Return ONLY valid JSON in exactly this format:
 
 {{
-  "headline": "emoji + short headline",
-  "summary": "2-3 short lines",
+  "headline": "emoji + short English headline",
+  "summary": "2-3 short English lines",
   "hashtags": ["#Finance", "#StockMarket", "#News"]
 }}
 
 STRICT WRITING RULES:
 
-1. Write in NATURAL INDIAN HINGLISH.
-2. Use ROMAN ENGLISH letters only. Do NOT use Hindi Devanagari script.
-3. Mix simple Hindi and English naturally.
-4. Keep financial terms in English where appropriate:
-   IPO, Nifty, Sensex, RBI, SEBI, stocks, shares, crude oil, rupee, market, investors, etc.
-5. Do NOT translate financial terms into awkward Hindi.
-6. Headline must be short, clear and attention-grabbing.
-7. Headline should normally be 5-10 words.
-8. Summary must contain 2-3 short, easy-to-read lines.
-9. Explain WHAT happened, using only information available in the article.
-10. Do NOT add information that is not present in the article.
-11. Do NOT give investment advice.
-12. Do NOT tell people to BUY, SELL or HOLD.
-13. Do NOT make predictions about prices or markets.
-14. Do NOT use phrases like "investors should buy", "big opportunity", or "guaranteed profit".
-15. Avoid clickbait and exaggerated language.
+1. Write in CLEAR, NATURAL ENGLISH ONLY.
+2. Do NOT use Hindi, Hinglish, or any other language.
+3. Use simple, professional English that is easy to understand.
+4. Keep financial terms in English.
+5. Headline must be short, clear and attention-grabbing.
+6. Headline should normally be 5-10 words.
+7. Summary must contain 2-3 short, easy-to-read lines.
+8. Explain WHAT happened using ONLY information available
+   in the article title and summary.
+9. NEVER add facts that are not explicitly supported by the article.
+10. NEVER invent numbers, percentages, dates, prices, causes,
+    events, or comparisons.
+11. If the article does not provide enough information,
+    keep the summary simple rather than guessing.
+12. Do NOT give investment advice.
+13. Do NOT tell people to BUY, SELL or HOLD.
+14. Do NOT make predictions about prices or markets.
+15. Do NOT use clickbait or exaggerated claims.
 16. Use 3-5 relevant hashtags.
 17. Always include #Finance and #StockMarket.
 18. Add 1-3 topic-specific hashtags when relevant.
-19. Keep the tone professional but social-media friendly.
+19. Keep the tone professional and social-media friendly.
 20. Do not mention that you are an AI.
 
-QUALITY EXAMPLES:
+IMPORTANT FACT-CHECKING RULES:
 
-Bad:
-"Indonesia Banayat Naya Body"
+- Use ONLY facts explicitly present in the provided
+  article title or summary.
+- Do not interpret missing information as fact.
+- Do not strengthen or exaggerate the source.
+- Do not change the meaning of the original article.
+- Do not create additional context.
+- Do not assume what happened before or after the article.
+- If uncertain, use simpler wording rather than guessing.
+- English only.
 
-Good:
-"🇮🇩 Indonesia banayega naya land reform body"
-
-Bad:
-"📈 Rupee ke nirantar badlav kya hain?"
-
-Good:
-"💱 Rupee par oil prices ka pressure"
-
-Bad:
-"Nvidia shares now sell for half the price..."
-
-Good Hinglish:
-"💻 Nvidia shares mein badi girawat"
-
-Remember:
-- Natural Hinglish
-- Roman script only
-- Factual
-- Short
-- Instagram-friendly
-
-Return ONLY JSON. No markdown. No explanation.
+Return ONLY JSON.
+No markdown.
+No explanation.
 """.strip()
 
 
@@ -121,7 +110,9 @@ def parse_ai_response(content: str) -> dict[str, Any]:
     hashtags = data.get("hashtags", [])
 
     if not headline or not summary:
-        raise ValueError("AI response is missing headline or summary.")
+        raise ValueError(
+            "AI response is missing headline or summary."
+        )
 
     if not isinstance(hashtags, list):
         hashtags = []
@@ -168,8 +159,8 @@ def summarize_article(article: Article) -> dict[str, Any] | None:
             {
                 "role": "system",
                 "content": (
-                    "You are a factual Indian financial news editor. "
-                    "Write natural Roman-script Hinglish captions "
+                    "You are a factual financial news editor. "
+                    "Write clear, natural English captions "
                     "for Instagram. Never invent facts."
                 ),
             },
@@ -197,7 +188,10 @@ def summarize_article(article: Article) -> dict[str, Any] | None:
             )
 
             if response.status_code == 429:
-                retry_after = response.headers.get("Retry-After", "5")
+                retry_after = response.headers.get(
+                    "Retry-After",
+                    "5",
+                )
 
                 try:
                     wait_seconds = int(retry_after)
@@ -273,7 +267,11 @@ def summarize_article(article: Article) -> dict[str, Any] | None:
             )
             break
 
-    logger.error("Failed to summarize article: %s", article.title)
+    logger.error(
+        "Failed to summarize article: %s",
+        article.title,
+    )
+
     return None
 
 
