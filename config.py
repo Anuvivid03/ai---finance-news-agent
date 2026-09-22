@@ -55,7 +55,7 @@ OPENROUTER_API_URL: Final[str] = (
 )
 
 OPENROUTER_MODEL: Final[str] = (
-    "meta-llama/llama-3.1-8b-instruct"
+    "nvidia/nemotron-3-ultra-550b-a55b:free"
 )
 
 
