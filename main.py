@@ -6,10 +6,15 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
-from fetch_news import fetch_latest_news
+from database import (
+    initialize_database,
+    is_article_processed,
+    mark_article_processed,
+)
+from fetch_news import Article, fetch_latest_news
 from summarize import generate_daily_digest
 
 
@@ -41,28 +46,86 @@ def save_digest(digest: list[dict]) -> Path:
     return output_file
 
 
+def filter_new_articles(
+    articles: list[Article],
+) -> list[Article]:
+    """Return only articles that have not been processed before."""
+    new_articles: list[Article] = []
+
+    for article in articles:
+        if is_article_processed(article.url):
+            logger.info(
+                "Skipping already processed article: %s",
+                article.title,
+            )
+            continue
+
+        new_articles.append(article)
+
+    logger.info(
+        "New articles: %d/%d",
+        len(new_articles),
+        len(articles),
+    )
+
+    return new_articles
+
+
+def mark_successful_articles(
+    digest: list[dict],
+) -> None:
+    """Mark successfully summarized articles as processed."""
+    processed_at = datetime.now(timezone.utc).isoformat()
+
+    for article in digest:
+        mark_article_processed(
+            url=article["url"],
+            title=article["title"],
+            processed_at=processed_at,
+        )
+
+
 def main() -> None:
     """Run the complete finance news pipeline."""
     logger.info("Starting AI Finance News Agent...")
 
+    # Create the SQLite database/table if needed.
+    initialize_database()
+
+    # Fetch latest RSS articles.
     articles = fetch_latest_news()
 
     if not articles:
         logger.error("No news articles found.")
         return
 
-    logger.info("Generating AI captions for %d articles...", len(articles))
+    # Remove articles already processed previously.
+    new_articles = filter_new_articles(articles)
 
-    digest = generate_daily_digest(articles)
+    if not new_articles:
+        logger.info("No new articles to process today.")
+        return
+
+    logger.info(
+        "Generating AI captions for %d new articles...",
+        len(new_articles),
+    )
+
+    # Generate AI captions.
+    digest = generate_daily_digest(new_articles)
 
     if not digest:
         logger.error("No AI summaries were generated.")
         return
 
+    # Mark only successfully summarized articles as processed.
+    mark_successful_articles(digest)
+
+    # Save the generated digest.
     output_file = save_digest(digest)
 
     logger.info(
-        "SUCCESS: %d articles saved to %s",
+        "SUCCESS: %d new articles saved to %s",
         len(digest),
         output_file,
     )
